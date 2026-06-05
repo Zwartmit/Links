@@ -20,15 +20,19 @@ class LinkScannerService : AccessibilityService() {
     private var isServiceActive = false
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        event ?: return
-        
-        when (event.eventType) {
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                if (isServiceActive) {
-                    scanForUrls(event.source)
+        try {
+            event ?: return
+            
+            when (event.eventType) {
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                    if (isServiceActive) {
+                        scanForUrls(event.source)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e("Scanner", "Error in onAccessibilityEvent", e)
         }
     }
 
@@ -37,15 +41,23 @@ class LinkScannerService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
-        super.onServiceConnected()
-        Log.d(TAG, "Accessibility service connected")
-        isServiceActive = true
+        try {
+            super.onServiceConnected()
+            Log.d(TAG, "Accessibility service connected")
+            isServiceActive = true
+        } catch (e: Exception) {
+            Log.e("Scanner", "Error in onServiceConnected", e)
+        }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "Accessibility service destroyed")
-        isServiceActive = false
+        try {
+            super.onDestroy()
+            Log.d(TAG, "Accessibility service destroyed")
+            isServiceActive = false
+        } catch (e: Exception) {
+            Log.e("Scanner", "Error in onDestroy", e)
+        }
     }
 
     private fun scanForUrls(nodeInfo: AccessibilityNodeInfo?) {
