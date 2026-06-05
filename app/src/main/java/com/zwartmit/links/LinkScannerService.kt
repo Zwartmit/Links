@@ -6,18 +6,21 @@ import android.graphics.Path
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Toast
 import java.util.regex.Pattern
+import java.util.HashSet
 
 class LinkScannerService : AccessibilityService() {
 
     companion object {
         private const val TAG = "LinkScannerService"
         private val URL_PATTERN = Pattern.compile(
-            "(https?://[\\w\\-]+(\\.[\\w\\-]+)+[\\w\\-\\.,@?^=%&amp;:/~\\+#]*[\\w\\-\\@?^=%&amp;/~\\+#])"
+            "https?://[a-zA-Z0-9./?=_-]+"
         )
     }
 
     private var isServiceActive = false
+    private val detectedUrls = HashSet<String>()
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         try {
@@ -55,6 +58,7 @@ class LinkScannerService : AccessibilityService() {
             super.onDestroy()
             Log.d(TAG, "Accessibility service destroyed")
             isServiceActive = false
+            detectedUrls.clear()
         } catch (e: Exception) {
             Log.e("Scanner", "Error in onDestroy", e)
         }
@@ -63,36 +67,39 @@ class LinkScannerService : AccessibilityService() {
     private fun scanForUrls(nodeInfo: AccessibilityNodeInfo?) {
         nodeInfo ?: return
         
-        val nodes = nodeInfo?.let { getAllDescendants(it) } ?: return
+        traverseNode(nodeInfo)
+    }
+
+    private fun traverseNode(node: AccessibilityNodeInfo?) {
+        node ?: return
         
-        for (node in nodes) {
-            val text = node.text?.toString() ?: node.contentDescription?.toString() ?: ""
-            
-            if (text.isNotBlank()) {
-                val urls = extractUrls(text)
-                if (urls.isNotEmpty()) {
-                    Log.d(TAG, "Found URLs: $urls")
-                    // TODO: Handle found URLs (e.g., display in UI, copy to clipboard, etc.)
+        // Extract text and contentDescription from current node
+        val text = node.text?.toString() ?: node.contentDescription?.toString() ?: ""
+        
+        if (text.isNotBlank()) {
+            val urls = extractUrls(text)
+            for (url in urls) {
+                // Anti-spam: only show toast if URL hasn't been detected recently
+                if (!detectedUrls.contains(url)) {
+                    detectedUrls.add(url)
+                    Log.d(TAG, "Found URL: $url")
+                    
+                    // Show visual feedback
+                    Toast.makeText(applicationContext, "Enlace detectado: $url", Toast.LENGTH_SHORT).show()
+                    
+                    // Remove URL from set after 5 seconds to allow detection again
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        detectedUrls.remove(url)
+                    }, 5000)
                 }
             }
         }
-    }
-
-    private fun getAllDescendants(root: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {
-        val nodes = mutableListOf<AccessibilityNodeInfo>()
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            nodes.add(node)
-
-            for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { queue.add(it) }
-            }
+        
+        // Recursively traverse child nodes
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            traverseNode(child)
         }
-
-        return nodes
     }
 
     private fun extractUrls(text: String): List<String> {
