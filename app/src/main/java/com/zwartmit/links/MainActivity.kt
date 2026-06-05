@@ -2,8 +2,8 @@ package com.zwartmit.links
 
 import android.content.Context
 import android.os.Bundle
-import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
+import android.accessibilityservice.AccessibilityServiceInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -30,22 +30,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Verificar el estado del servicio usando AccessibilityManager
-        val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        val serviceEnabled = accessibilityManager.isEnabled && 
-            isAccessibilityServiceEnabled(this)
+        
+        // Verificar el estado real del servicio usando AccessibilityManager
+        val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        val enabledServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_GENERIC)
+        val isActive = enabledServices.any { it.resolveInfo.serviceInfo.name == LinkScannerService::class.java.name }
         
         // Actualizar el estado de la UI
         setContent {
-            LinkScannerApp(serviceEnabled)
+            LinkScannerApp(isActive)
         }
     }
 }
 
 @Composable
 fun LinkScannerApp(initialServiceEnabled: Boolean? = null) {
-    val context = LocalContext.current
-    var isServiceEnabled by remember { mutableStateOf(initialServiceEnabled ?: isAccessibilityServiceEnabled(context)) }
+    var isServiceEnabled by remember { mutableStateOf(initialServiceEnabled ?: false) }
 
     MaterialTheme {
         Box(
@@ -114,13 +114,4 @@ fun LinkScannerApp(initialServiceEnabled: Boolean? = null) {
             }
         }
     }
-}
-
-private fun isAccessibilityServiceEnabled(context: Context): Boolean {
-    val expectedComponentName = "${context.packageName}/.LinkScannerService"
-    val enabledServices = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-    )
-    return enabledServices?.contains(expectedComponentName) == true
 }
