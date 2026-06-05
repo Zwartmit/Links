@@ -29,7 +29,7 @@
         <service
             android:name=".ToggleScannerTile"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_foreground"
+            android:icon="@drawable/ic_tile_scanner"
             android:label="Link Scanner"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>

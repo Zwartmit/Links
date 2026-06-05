@@ -3,6 +3,7 @@ package com.zwartmit.links
 import android.content.Context
 import android.os.Bundle
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -26,12 +27,25 @@ class MainActivity : ComponentActivity() {
             LinkScannerApp()
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Verificar el estado del servicio usando AccessibilityManager
+        val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        val serviceEnabled = accessibilityManager.isEnabled && 
+            isAccessibilityServiceEnabled(this)
+        
+        // Actualizar el estado de la UI
+        setContent {
+            LinkScannerApp(serviceEnabled)
+        }
+    }
 }
 
 @Composable
-fun LinkScannerApp() {
+fun LinkScannerApp(initialServiceEnabled: Boolean? = null) {
     val context = LocalContext.current
-    var isServiceEnabled by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
+    var isServiceEnabled by remember { mutableStateOf(initialServiceEnabled ?: isAccessibilityServiceEnabled(context)) }
 
     MaterialTheme {
         Box(
